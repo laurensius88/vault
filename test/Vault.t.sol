@@ -84,6 +84,45 @@ contract VaultTest is Test {
         vm.stopPrank();
     }
 
+    function testPauseDepositWithdrawFailed() public {
+        vault.pause();
+
+        vm.startPrank(mockUser1);
+        uint256 amount = 10 ether;
+        weth.approve(address(vault), amount);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        vault.deposit(address(weth), amount);
+        vm.stopPrank();
+
+        vault.unpause();
+
+        vm.startPrank(mockUser1);
+        weth.approve(address(vault), amount);
+        vault.deposit(address(weth), amount);
+        assertEq(
+            IVault(address(vault)).balances(mockUser1, address(weth)),
+            amount
+        );
+        vm.stopPrank();
+
+        vault.pause();
+
+        vm.startPrank(mockUser1);
+        weth.approve(address(vault), amount);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        vault.withdraw(address(weth), amount);
+        vm.stopPrank();
+
+        vault.unpause();
+
+        vm.startPrank(mockUser1);
+        weth.approve(address(vault), amount);
+
+        vault.withdraw(address(weth), amount);
+        assertEq(IVault(address(vault)).balances(mockUser1, address(weth)), 0);
+        vm.stopPrank();
+    }
+
     function testPauseAndUnpauseNonOwner() public {
         vm.startPrank(mockUser1);
         vm.expectRevert(
