@@ -213,4 +213,46 @@ contract VaultTest is Test {
         vault.deposit(address(weth), 0);
         vm.stopPrank();
     }
+
+    function testDepositWithdrawMultipleUser() public {
+        vm.startPrank(mockUser1);
+        uint256 amount = 10 ether;
+        weth.approve(address(vault), amount);
+        vault.deposit(address(weth), amount);
+        vm.stopPrank();
+        assertEq(
+            IVault(address(vault)).balances(mockUser1, address(weth)),
+            amount
+        );
+
+        vm.startPrank(mockUser2);
+        uint256 amount2 = 1e4 * 1e6;
+        IERC20(address(usdt)).approve(address(vault), amount2);
+        vault.deposit(address(usdt), amount2);
+        vm.stopPrank();
+        assertEq(
+            IVault(address(vault)).balances(mockUser2, address(usdt)),
+            amount2
+        );
+
+        vm.startPrank(mockUser1);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientBalance()"));
+        vault.withdraw(address(usdt), amount2);
+        vm.stopPrank();
+
+        vm.startPrank(mockUser2);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientBalance()"));
+        vault.withdraw(address(weth), amount);
+        vm.stopPrank();
+
+        vm.startPrank(mockUser1);
+        vault.withdraw(address(weth), amount);
+        assertEq(IVault(address(vault)).balances(mockUser1, address(weth)), 0);
+        vm.stopPrank();
+
+        vm.startPrank(mockUser2);
+        vault.withdraw(address(usdt), amount2);
+        assertEq(IVault(address(vault)).balances(mockUser2, address(usdt)), 0);
+        vm.stopPrank();
+    }
 }
